@@ -1,18 +1,47 @@
 const express = require('express');
 const router = express.Router();
 const { createOrder, confirmOrder, cancelOrder } = require('../controllers/orderController');
-const { Order } = require('../models'); // add direct model import for mock route
+const { Order, Listing, User } = require('../models'); // ✅ import models
 
-// Create new order (buyer initiates)
+// 👉 Get all orders (optionally filter by buyerId)
+router.get('/', async (req, res) => {
+  try {
+    const { buyerId } = req.query;
+    let where = {};
+    if (buyerId) {
+      where.buyerId = buyerId;
+    }
+
+    // Include Listing + Seller for richer info
+    const orders = await Order.findAll({
+      where,
+      include: [
+        {
+          model: Listing,
+          attributes: ['title', 'price', 'currency'],
+          include: [{ model: User, as: 'seller', attributes: ['pi_username', 'full_name'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json(orders);
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+// 👉 Create new order (buyer initiates - real flow)
 router.post('/', createOrder);
 
-// Buyer confirms order -> release escrow
+// 👉 Buyer confirms order -> release escrow
 router.put('/:id/confirm', confirmOrder);
 
-// Buyer cancels order (before seller ships)
+// 👉 Buyer cancels order (before seller ships)
 router.put('/:id/cancel', cancelOrder);
 
-// Mock order route
+// 👉 Mock order route (for demo/testing without Pi SDK)
 router.post('/mock', async (req, res) => {
   try {
     const { buyerId, listingId } = req.body;
@@ -22,7 +51,6 @@ router.post('/mock', async (req, res) => {
     }
 
     // Get listing info
-    const { Listing } = require('../models');
     const listing = await Listing.findByPk(listingId);
 
     if (!listing) {
@@ -43,7 +71,7 @@ router.post('/mock', async (req, res) => {
       order
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error creating mock order:", error);
     res.status(500).json({ error: 'Failed to create mock order' });
   }
 });
