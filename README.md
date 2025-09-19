@@ -92,7 +92,7 @@ npm run dev
 ---
 
 ## 📅 Hackathon Timeline
-- **Midpoint (19 Sept)** → Working backend deployed on Railway ✅
+- **Midpoint (19 Sep)** → Working backend deployed on Railway ✅
 - **Final (19 Oct)** → Integrate real Pi Payments SDK + improve order lifecycle
 
 ---
