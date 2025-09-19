@@ -19,21 +19,14 @@ exports.createOrder = async (req, res) => {
       status: 'pending'
     });
 
-    // ⚡️ Pi Payments SDK integration point
-    // Here you'd call Pi.createPayment(...) to generate a paymentId.
-    // Example (pseudo-code):
-    // const payment = await Pi.createPayment({
-    //   amount: listing.price,
-    //   memo: `Order ${order.id} for listing ${listing.title}`,
-    //   metadata: { orderId: order.id }
-    // });
-    //
-    // Then store payment.identifier in DB:
+    // ⚡️ Pi Payments SDK integration point (pseudo)
+    // const payment = await Pi.createPayment({...})
     // order.escrowPaymentId = payment.identifier;
     // await order.save();
 
     res.status(201).json({ message: 'Order created, awaiting payment', order });
   } catch (error) {
+    console.error("Error creating order:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -42,16 +35,23 @@ exports.createOrder = async (req, res) => {
 exports.confirmOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const order = await Order.findByPk(id);
+    const order = await Order.findByPk(id, {
+      include: [
+        { model: Listing, as: 'listing' },
+        { model: User, as: 'buyer' },
+        { model: User, as: 'seller' }
+      ]
+    });
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    // ⚡️ Pi Payments SDK integration point
+    // ⚡️ Pi Payments SDK integration point (pseudo)
     // Pi.completePayment(order.escrowPaymentId);
 
     order.status = 'completed';
     await order.save();
     res.json({ message: 'Order completed & payment released', order });
   } catch (error) {
+    console.error("Error confirming order:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -60,16 +60,23 @@ exports.confirmOrder = async (req, res) => {
 exports.cancelOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const order = await Order.findByPk(id);
+    const order = await Order.findByPk(id, {
+      include: [
+        { model: Listing, as: 'listing' },
+        { model: User, as: 'buyer' },
+        { model: User, as: 'seller' }
+      ]
+    });
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    // ⚡️ Pi Payments SDK integration point
+    // ⚡️ Pi Payments SDK integration point (pseudo)
     // Pi.cancelPayment(order.escrowPaymentId);
 
     order.status = 'cancelled';
     await order.save();
     res.json({ message: 'Order cancelled & payment refunded', order });
   } catch (error) {
+    console.error("Error cancelling order:", error);
     res.status(500).json({ error: error.message });
   }
 };

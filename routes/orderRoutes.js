@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { createOrder, confirmOrder, cancelOrder } = require('../controllers/orderController');
-const { Order, Listing, User } = require('../models'); // ✅ import models
+const { Order, Listing, User } = require('../models');
 
 // 👉 Get all orders (optionally filter by buyerId)
 router.get('/', async (req, res) => {
@@ -12,14 +12,25 @@ router.get('/', async (req, res) => {
       where.buyerId = buyerId;
     }
 
-    // Include Listing + Seller for richer info
     const orders = await Order.findAll({
       where,
       include: [
         {
           model: Listing,
-          attributes: ['title', 'price', 'currency'],
-          include: [{ model: User, as: 'seller', attributes: ['pi_username', 'full_name'] }]
+          as: 'listing', // ✅ use alias
+          attributes: ['id', 'title', 'price', 'currency'],
+          include: [
+            {
+              model: User,
+              as: 'seller', // ✅ use alias
+              attributes: ['id', 'pi_username', 'full_name']
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'buyer', // ✅ use alias
+          attributes: ['id', 'pi_username', 'full_name']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -32,16 +43,51 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 👉 Create new order (buyer initiates - real flow)
+// 👉 Get all orders for a given sellerId
+router.get('/seller/:sellerId', async (req, res) => {
+  try {
+    const { sellerId } = req.params;
+
+    const orders = await Order.findAll({
+      where: { sellerId },
+      include: [
+        {
+          model: Listing,
+          as: 'listing',
+          attributes: ['id', 'title', 'price', 'currency']
+        },
+        {
+          model: User,
+          as: 'buyer',
+          attributes: ['id', 'pi_username', 'full_name']
+        },
+        {
+          model: User,
+          as: 'seller',
+          attributes: ['id', 'pi_username', 'full_name']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json(orders);
+  } catch (err) {
+    console.error("Error fetching seller orders:", err);
+    res.status(500).json({ error: 'Failed to fetch seller orders' });
+  }
+});
+
+
+// 👉 Create new order
 router.post('/', createOrder);
 
-// 👉 Buyer confirms order -> release escrow
+// 👉 Buyer confirms order
 router.put('/:id/confirm', confirmOrder);
 
-// 👉 Buyer cancels order (before seller ships)
+// 👉 Buyer cancels order
 router.put('/:id/cancel', cancelOrder);
 
-// 👉 Mock order route (for demo/testing without Pi SDK)
+// 👉 Mock order route
 router.post('/mock', async (req, res) => {
   try {
     const { buyerId, listingId } = req.body;
@@ -50,19 +96,17 @@ router.post('/mock', async (req, res) => {
       return res.status(400).json({ error: 'buyerId and listingId required' });
     }
 
-    // Get listing info
     const listing = await Listing.findByPk(listingId);
-
     if (!listing) {
       return res.status(404).json({ error: 'Listing not found' });
     }
 
-    // Create order with required fields
     const order = await Order.create({
       buyerId,
       sellerId: listing.sellerId,
       listingId,
       amount: listing.price,
+      currency: listing.currency,
       status: 'paid' // simulate instant success
     });
 
