@@ -17,19 +17,19 @@ router.get('/', async (req, res) => {
       include: [
         {
           model: Listing,
-          as: 'listing', // ✅ use alias
+          as: 'listing',
           attributes: ['id', 'title', 'price', 'currency'],
           include: [
             {
               model: User,
-              as: 'seller', // ✅ use alias
+              as: 'seller',
               attributes: ['id', 'pi_username', 'full_name']
             }
           ]
         },
         {
           model: User,
-          as: 'buyer', // ✅ use alias
+          as: 'buyer',
           attributes: ['id', 'pi_username', 'full_name']
         }
       ],
@@ -77,7 +77,6 @@ router.get('/seller/:sellerId', async (req, res) => {
   }
 });
 
-
 // 👉 Create new order
 router.post('/', createOrder);
 
@@ -107,7 +106,7 @@ router.post('/mock', async (req, res) => {
       listingId,
       amount: listing.price,
       currency: listing.currency,
-      status: 'paid' // simulate instant success
+      status: 'paid'
     });
 
     res.json({
